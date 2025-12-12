@@ -17,7 +17,7 @@ import { HealthModule } from './health/health.module';
       type: 'postgres',
       url: process.env.DATABASE_URL,
       autoLoadEntities: true,
-      synchronize: false, // NEVER use true in production
+      synchronize: false, // Manual migration completed
 
       // Connection Pooling
       extra: {

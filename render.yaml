@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: ride-andhra-backend
+    env: docker
+    region: singapore
+    plan: free
+    branch: main
+    repo: https://github.com/your-username/your-repo # Update this
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ride-andhra-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+
+databases:
+  - name: ride-andhra-db
+    databaseName: ride_andhra
+    user: ride_andhra_user
+    plan: free
+    region: singapore

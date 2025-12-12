@@ -23,8 +23,8 @@ export class UsersService {
     const user = this.usersRepository.create(userData);
     const savedUser = await this.usersRepository.save(user);
 
-    // Create rider profile for new user
-    if (savedUser.role === UserRole.RIDER) {
+    // Create rider profile for new user if they have the RIDER role
+    if (savedUser.roles?.includes(UserRole.RIDER)) {
       await this.createRiderProfile(savedUser.id);
     }
 

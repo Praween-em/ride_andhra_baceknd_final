@@ -85,7 +85,7 @@ export class AuthService {
       user = await this.usersService.create({
         phone_number: phoneNumber,
         name: '',
-        role: UserRole.RIDER,
+        roles: [UserRole.RIDER],
       });
       isNewUser = true;
     }
@@ -93,7 +93,7 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: user.id,
       phoneNumber: user.phone_number,
-      roles: [user.role],
+      roles: user.roles,
       name: user.name,
     };
 

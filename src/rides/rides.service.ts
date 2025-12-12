@@ -14,7 +14,7 @@ export class RidesService {
     @InjectRepository(FareSetting)
     private fareSettingsRepository: Repository<FareSetting>,
     private notificationsService: NotificationsService,
-  ) {}
+  ) { }
 
   async calculateFare(
     distance: number,
@@ -114,9 +114,15 @@ export class RidesService {
   async createRide(
     createRideDto: CreateRideDto & { rider_id: string },
   ): Promise<Ride> {
+    // Normalize vehicle_type: lowercase and replace hyphens with underscores
+    // e.g., 'Bike-lite' -> 'bike_lite' to match database enum
+    const normalizedVehicleType = createRideDto.vehicle_type
+      ?.toLowerCase()
+      .replace(/-/g, '_') as VehicleType;
+
     const rideToCreate: Partial<Ride> = {
       ...createRideDto,
-      vehicle_type: createRideDto.vehicle_type?.toLowerCase() as VehicleType,
+      vehicle_type: normalizedVehicleType,
       estimated_distance_km: createRideDto.distance,
       estimated_duration_min: createRideDto.duration,
       estimated_fare: createRideDto.fare,

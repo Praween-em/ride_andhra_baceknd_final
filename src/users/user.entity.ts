@@ -27,9 +27,10 @@ export class User {
     type: 'enum',
     enum: UserRole,
     enumName: 'users_role_enum',
-    default: UserRole.RIDER,
+    array: true,
+    default: [UserRole.RIDER],
   })
-  role: UserRole;
+  roles: UserRole[];
 
   @Column({
     type: 'timestamp',

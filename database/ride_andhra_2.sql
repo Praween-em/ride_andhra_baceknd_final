@@ -1,9 +1,11 @@
 -- ===================================================================
--- RIDE ANDHRA — FULL DATABASE SCHEMA (COMPLETE)
+-- RIDE ANDHRA — CONSOLIDATED DATABASE SCHEMA V2
 -- ===================================================================
 -- - Postgres + PostGIS
--- - Designed for Rider + Driver apps
--- - Includes MSG91 session support, tiered fares, rider PIN, secure docs
+-- - Designed for Rider + Driver apps (compatible with both)
+-- - Includes all migrations and fixes applied
+-- - Multi-role support (users can be both rider and driver)
+-- - MSG91 session support, tiered fares, rider PIN, secure docs
 -- ===================================================================
 
 -- =========================================
@@ -51,17 +53,19 @@ END$$;
 -- 2. CORE TABLES
 -- =========================================
 
--- USERS: All users (rider, driver, admin)
+-- USERS: All users (rider, driver, admin) with multi-role support
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     phone_number VARCHAR(15) UNIQUE NOT NULL,
     name VARCHAR(150),
     email VARCHAR(254),
-    role user_role_enum NOT NULL DEFAULT 'rider',
+    -- 🔄 CHANGED: From single 'role' to 'roles' array for multi-role support
+    roles user_role_enum[] NOT NULL DEFAULT ARRAY['rider'::user_role_enum],
     profile_image TEXT,
     is_verified BOOLEAN DEFAULT FALSE,
     is_blocked BOOLEAN DEFAULT FALSE,
     -- Rider PIN (hashed) - store salted hash only (crypt)
+    rider_pin TEXT, -- 4 digit PIN for ride verification
     rider_pin_hash TEXT,
     rating_avg DECIMAL(3,2) DEFAULT 5.00,
     rating_count INTEGER DEFAULT 0,
@@ -324,7 +328,7 @@ CREATE TABLE IF NOT EXISTS rider_pin_attempts (
 -- 3. DRIVER APP COMPATIBILITY LAYER (VIEWS + TRIGGERS)
 -- =========================================
 
--- VIEW: driver_app_drivers
+-- VIEW: driver_app_drivers (compatible with multi-role)
 CREATE OR REPLACE VIEW driver_app_drivers AS
 SELECT
     u.id,
@@ -339,7 +343,7 @@ SELECT
     u.updated_at
 FROM users u
 JOIN driver_profiles dp ON u.id = dp.user_id
-WHERE u.role = 'driver';
+WHERE 'driver' = ANY(u.roles); -- 🔄 CHANGED: Check roles array instead of single role
 
 -- VIEW: driver_app_rides
 CREATE OR REPLACE VIEW driver_app_rides AS
@@ -444,20 +448,23 @@ BEGIN
     END LOOP;
 END$$;
 
--- Create user dependents on insert (wallet + profile)
+-- 🔄 FIXED: Create user dependents on insert (wallet + profiles) with roles array support
 CREATE OR REPLACE FUNCTION trigger_create_user_dependents()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO wallets (user_id) VALUES (NEW.id) ON CONFLICT DO NOTHING;
+    -- Create wallet for every user
+    INSERT INTO wallets (user_id) VALUES (NEW.id) ON CONFLICT (user_id) DO NOTHING;
 
+    -- Create rider profile if user has 'rider' role
     IF 'rider' = ANY(NEW.roles) THEN
-        INSERT INTO rider_profiles (user_id) VALUES (NEW.id) ON CONFLICT DO NOTHING;
+        INSERT INTO rider_profiles (user_id) VALUES (NEW.id) ON CONFLICT (user_id) DO NOTHING;
     END IF;
     
+    -- Create driver profile if user has 'driver' role
     IF 'driver' = ANY(NEW.roles) THEN
         INSERT INTO driver_profiles (user_id, first_name, last_name)
         VALUES (NEW.id, SPLIT_PART(COALESCE(NEW.name,''),' ',1), COALESCE(SPLIT_PART(NEW.name,' ',2), ''))
-        ON CONFLICT DO NOTHING;
+        ON CONFLICT (user_id) DO NOTHING;
     END IF;
     
     RETURN NEW;
@@ -497,6 +504,20 @@ CREATE TRIGGER sync_driver_geography
 BEFORE INSERT OR UPDATE ON driver_profiles
 FOR EACH ROW
 EXECUTE FUNCTION trigger_sync_geography();
+
+-- PIN generation helper function
+CREATE OR REPLACE FUNCTION generate_unique_pin()
+RETURNS TEXT AS $$
+DECLARE
+    new_pin TEXT;
+BEGIN
+    LOOP
+        new_pin := LPAD(FLOOR(RANDOM() * 10000)::TEXT, 4, '0');
+        EXIT WHEN NOT EXISTS (SELECT 1 FROM users WHERE rider_pin = new_pin);
+    END LOOP;
+    RETURN new_pin;
+END;
+$$ LANGUAGE plpgsql;
 
 -- =========================================
 -- 5. BUSINESS LOGIC FUNCTIONS
@@ -617,7 +638,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create ride request: estimates fare, creates ride, notifies nearby drivers (inserts into notifications and queue)
+-- Create ride request: estimates fare, creates ride, notifies nearby drivers
 CREATE OR REPLACE FUNCTION create_ride_request(
     p_rider_id UUID,
     p_pickup_lat DECIMAL, p_pickup_lon DECIMAL, p_pickup_addr TEXT,
@@ -631,7 +652,7 @@ DECLARE
     v_est_distance DECIMAL;
     v_est_duration INTEGER;
     v_pickup_geog GEOGRAPHY(Point,4326);
-    v_drop_geog GEOGRAPHY(Point,4326);
+    v_drop_geog GEOGRAPHY( Point,4326);
     v_nearby_driver RECORD;
 BEGIN
     SELECT ST_SetSRID(ST_MakePoint(p_pickup_lon, p_pickup_lat), 4326) INTO v_pickup_geog;
@@ -786,8 +807,8 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'message', 'User with this phone already exists.');
     END IF;
 
-    INSERT INTO users (phone_number, name, role, is_verified)
-    VALUES (p_phone_number, p_name, p_role, true)
+    INSERT INTO users (phone_number, name, roles, is_verified)
+    VALUES (p_phone_number, p_name, ARRAY[p_role], true)
     RETURNING * INTO v_user;
 
     RETURN jsonb_build_object('success', true, 'user', row_to_json(v_user));
@@ -848,6 +869,7 @@ EXECUTE FUNCTION trg_update_user_rating_after_insert();
 -- 7. INDEXES (PERFORMANCE)
 -- =========================================
 CREATE INDEX IF NOT EXISTS idx_users_phone_number ON users(phone_number);
+CREATE INDEX IF NOT EXISTS idx_users_roles ON users USING GIN(roles); -- GIN index for array queries
 CREATE INDEX IF NOT EXISTS idx_driver_profiles_status ON driver_profiles(status, is_online, is_available);
 CREATE INDEX IF NOT EXISTS idx_driver_profiles_location ON driver_profiles USING GIST(current_location);
 CREATE INDEX IF NOT EXISTS idx_rides_status ON rides(status);
@@ -860,57 +882,33 @@ CREATE INDEX IF NOT EXISTS idx_wallets_user_id ON wallets(user_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_wallet_id ON transactions(wallet_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_fare_tiers_vehicle ON fare_tiers(vehicle_type);
-CREATE INDEX IF NOT EXISTS idx_external_sessions_phone ON external_auth_sessions(phone_number);
-CREATE INDEX IF NOT EXISTS idx_otps_phone_number ON otps(phone_number);
-CREATE INDEX IF NOT EXISTS idx_notification_queue_next ON notification_queue(next_attempt_at, status);
-CREATE INDEX IF NOT EXISTS idx_ride_ratings_rated_user ON ride_ratings(rated_user_id);
 
 -- =========================================
--- 8. SAMPLE/SEED DATA (FARE SETTINGS & TIERS)
+-- 8. SAMPLE DATA (FARE SETTINGS)
 -- =========================================
-INSERT INTO fare_settings (vehicle_type, base_fare, per_km_rate, per_minute_rate, minimum_fare, surge_multiplier)
-VALUES
-('cab', 50.00, 14.00, 2.00, 80.00, 1.00),
-('bike', 20.00, 8.50, 1.00, 30.00, 1.00),
+INSERT INTO fare_settings (vehicle_type, base_fare, per_km_rate, per_minute_rate, minimum_fare, surge_multiplier) VALUES
+('cab', 40.00, 15.00, 2.00, 60.00, 1.00),
+('bike', 20.00, 8.00, 1.00, 30.00, 1.00),
 ('auto', 30.00, 12.00, 1.50, 50.00, 1.00),
 ('bike_lite', 15.00, 6.00, 0.80, 20.00, 1.00),
 ('parcel', 60.00, 18.00, 0.00, 100.00, 1.00),
 ('premium', 80.00, 22.00, 3.00, 150.00, 1.00)
-ON CONFLICT (vehicle_type) DO NOTHING;
-
--- Example fare tiers: 0-10, 10.01-20, 20.01+
-INSERT INTO fare_tiers (vehicle_type, km_from, km_to, per_km_rate)
-VALUES
-('cab', 0.000, 10.000, 12.00),
-('cab', 10.001, 20.000, 13.50),
-('cab', 20.001, 10000.000, 14.00),
-('bike', 0.000, 10.000, 7.50),
-('bike', 10.001, 20.000, 8.00),
-('bike', 20.001, 10000.000, 8.50),
-('auto', 0.000, 10.000, 11.00),
-('auto', 10.001, 20.000, 11.80),
-('auto', 20.001, 10000.000, 12.00),
-('bike_lite', 0.000, 10.000, 5.50),
-('bike_lite', 10.001, 20.000, 5.80),
-('bike_lite', 20.001, 10000.000, 6.00),
-('parcel', 0.000, 50.000, 18.00),
-('parcel', 50.001, 10000.000, 20.00)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (vehicle_type) DO UPDATE SET
+    base_fare = EXCLUDED.base_fare,
+    per_km_rate = EXCLUDED.per_km_rate,
+    per_minute_rate = EXCLUDED.per_minute_rate,
+    minimum_fare = EXCLUDED.minimum_fare,
+    surge_multiplier = EXCLUDED.surge_multiplier,
+    updated_at = NOW();
 
 -- =========================================
--- 9. FINAL NOTICES
+-- NOTES & PRODUCTION READINESS
 -- =========================================
-DO $$
-BEGIN
-    RAISE NOTICE '✅ Ride Andhra schema created/ensured successfully.';
-    RAISE NOTICE '✅ Core tables, extensions, and functions are in place.';
-    RAISE NOTICE '✅ Remember to:';
-    RAISE NOTICE '   1) Back up existing DB before switching.';
-    RAISE NOTICE '   2) Configure object storage (S3/GCS) for driver_documents.storage_path.';
-    RAISE NOTICE '   3) Implement app-layer encryption for provider tokens if needed.';
-    RAISE NOTICE '   4) Deploy background worker to process notification_queue.';
-END$$;
-
-
-
-
+-- 1) ✅ Multi-role support: Users can be both rider and driver by having both roles in the array
+-- 2) ✅ Fixed triggers: All triggers now use NEW.roles array instead of NEW.role
+-- 3) ✅ Driver app compatibility: Views and triggers maintained for existing driver app
+-- 4) ⚠️  Before deploying, back up existing database
+-- 5) ⚠️  Configure object storage (S3/GCS) for driver_documents
+-- 6) ⚠️  Set up API keys and secrets in environment variables
+-- 7) ⚠️  Deploy background worker to process notification_queue
+-- 8) ⚠️  Enable SSL/TLS for production database connections
