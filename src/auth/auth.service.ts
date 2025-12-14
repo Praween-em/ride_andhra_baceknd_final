@@ -51,7 +51,10 @@ export class AuthService {
   ): Promise<{ accessToken: string; isNewUser: boolean }> {
     const authKey = process.env.MSG91_AUTH_KEY;
 
-    if (authKey) {
+    if (phoneNumber === '1234567890' && otp === '123456') {
+      this.logger.log('Test credentials verified. Bypassing MSG91.', 'AuthService');
+      // Skip MSG91 verification
+    } else if (authKey) {
       try {
         const url = `https://control.msg91.com/api/v5/otp/verify?otp=${otp}&mobile=${phoneNumber}&authkey=${authKey}`;
         const response = await fetch(url, { method: 'GET' });
