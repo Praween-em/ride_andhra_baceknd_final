@@ -21,6 +21,7 @@ export class AuthService {
   ) { }
 
   async sendOtp(phoneNumber: string): Promise<any> {
+    this.logger.log(`Sending OTP to: ${phoneNumber}`, 'AuthService');
     const authKey = process.env.MSG91_AUTH_KEY;
     const templateId = process.env.MSG91_TEMPLATE_ID;
 
