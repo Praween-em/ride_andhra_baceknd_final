@@ -59,6 +59,7 @@ export class AuthService {
         const url = `https://control.msg91.com/api/v5/otp/verify?otp=${otp}&mobile=${phoneNumber}&authkey=${authKey}`;
         const response = await fetch(url, { method: 'GET' });
         const data = await response.json();
+        this.logger.log(`MSG91 Verify Response: ${JSON.stringify(data)}`, 'AuthService');
 
         if (data.type !== 'success') {
           throw new UnauthorizedException(data.message || 'Invalid OTP');
