@@ -31,8 +31,8 @@ export class DriverDocument {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'driver_id', type: 'int' })
-  driverId: number;
+  @Column({ name: 'driver_id', type: 'uuid' })
+  driverId: string;
 
   @ManyToOne(() => Driver, (driver) => driver.documents)
   @JoinColumn({ name: 'driver_id' })

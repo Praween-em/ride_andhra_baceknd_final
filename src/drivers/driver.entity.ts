@@ -12,12 +12,9 @@ import { User } from '../users/user.entity';
 import { VehicleType } from '../rides/ride.entity';
 import { DriverDocument } from './driver-document.entity';
 
-@Entity('drivers')
+@Entity('driver_profiles')
 export class Driver {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  @Column({ type: 'uuid' })
+  @PrimaryGeneratedColumn('uuid')
   user_id: string;
 
   @OneToOne(() => User)

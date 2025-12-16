@@ -9,11 +9,15 @@ import {
 import { Wallet } from './wallet.entity';
 
 export enum TransactionType {
-  CREDIT = 'credit',
-  DEBIT = 'debit',
+  RIDE_FARE_CREDIT = 'ride_fare_credit',
+  RIDE_FARE_DEBIT = 'ride_fare_debit',
+  PAYOUT = 'payout',
+  WALLET_TOP_UP = 'wallet_top_up',
+  REFUND = 'refund',
+  CASHBACK = 'cashback',
 }
 
-@Entity('wallet_transactions')
+@Entity('transactions')
 export class WalletTransaction {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -25,20 +29,23 @@ export class WalletTransaction {
   @JoinColumn({ name: 'wallet_id' })
   wallet: Wallet;
 
-  @Column('decimal', { precision: 10, scale: 2 })
+  @Column({ type: 'uuid', nullable: true })
+  ride_id: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  payment_id: string;
+
+  @Column('decimal', { precision: 14, scale: 2 })
   amount: number;
 
   @Column({
     type: 'enum',
     enum: TransactionType,
+    enumName: 'transaction_type_enum',
   })
-  transaction_type: TransactionType;
+  type: TransactionType;
 
-  @Column({ type: 'varchar', length: 50, nullable: true })
-  reference_type: string;
 
-  @Column({ type: 'uuid', nullable: true })
-  reference_id: string;
 
   @Column({ type: 'text', nullable: true })
   description: string;
