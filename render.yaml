@@ -15,6 +15,10 @@ services:
           property: connectionString
       - key: JWT_SECRET
         generateValue: true
+      - key: MSG91_AUTH_KEY
+        sync: false
+      - key: MSG91_TEMPLATE_ID
+        sync: false
 
 databases:
   - name: ride-andhra-db

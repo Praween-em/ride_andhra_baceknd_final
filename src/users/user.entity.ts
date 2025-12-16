@@ -32,6 +32,9 @@ export class User {
   })
   roles: UserRole[];
 
+  @Column({ default: false })
+  is_verified: boolean;
+
   @Column({
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP',

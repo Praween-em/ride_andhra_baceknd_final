@@ -17,7 +17,7 @@ import { HealthModule } from './health/health.module';
       type: 'postgres',
       url: process.env.DATABASE_URL,
       autoLoadEntities: true,
-      synchronize: true, // Auto-create tables for the new database
+      synchronize: false, // Auto-create tables for the new database
 
       // Connection Pooling
       extra: {

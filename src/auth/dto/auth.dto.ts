@@ -21,3 +21,11 @@ export class VerifyOtpDto {
     @Matches(/^\d+$/, { message: 'OTP must contain only digits' })
     otp: string;
 }
+
+export class LoginVerifiedDto {
+    @IsString()
+    @IsNotEmpty()
+    @Length(10, 15)
+    @Matches(/^\d+$/, { message: 'Phone number must contain only digits' })
+    phoneNumber: string;
+}

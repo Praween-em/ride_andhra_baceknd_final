@@ -1,7 +1,7 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
-import { SendOtpDto, VerifyOtpDto } from './dto/auth.dto';
+import { SendOtpDto, VerifyOtpDto, LoginVerifiedDto } from './dto/auth.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -17,5 +17,10 @@ export class AuthController {
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
   verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
     return this.authService.verifyOtp(verifyOtpDto.phoneNumber, verifyOtpDto.otp);
+  }
+
+  @Post('login-verified')
+  loginVerified(@Body() loginVerifiedDto: LoginVerifiedDto) {
+    return this.authService.loginVerified(loginVerifiedDto.phoneNumber);
   }
 }
