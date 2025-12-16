@@ -65,8 +65,7 @@ export class DriversController {
         @Body() uploadDocumentDto: UploadDocumentDto,
         @UploadedFile() file: any
     ) {
-        const id = parseInt(driverId, 10);
-        return this.driversService.uploadDocument(id, uploadDocumentDto, file);
+        return this.driversService.uploadDocument(driverId, uploadDocumentDto, file);
     }
 
     @Get('documents/image/:documentId')
@@ -88,7 +87,6 @@ export class DriversController {
 
     @Get('documents/:driverId')
     async getDriverDocuments(@Param('driverId') driverId: string) {
-        const id = parseInt(driverId, 10);
-        return this.driversService.getDriverDocuments(id);
+        return this.driversService.getDriverDocuments(driverId);
     }
 }
