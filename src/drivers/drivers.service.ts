@@ -5,7 +5,7 @@ import { RegisterDriverDto } from './dto/register-driver.dto';
 import { UpdateDriverStatusDto } from './dto/update-status.dto';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 import { VerifyDocumentDto } from './dto/verify-document.dto';
-import { Driver } from './driver.entity';
+import { Driver, DriverStatus } from './driver.entity';
 import { DriverDocument, DocumentType, DocumentStatus } from './driver-document.entity';
 import { Ride } from '../rides/ride.entity';
 import { User, UserRole } from '../users/user.entity';
@@ -201,7 +201,7 @@ export class DriversService {
                 vehicleModel,
                 vehicleColor,
                 vehiclePlateNumber,
-                status: 'pending_approval',
+                status: DriverStatus.PENDING_APPROVAL,
             });
             driver = await this.driverRepository.save(newDriver);
         } else {
@@ -219,7 +219,7 @@ export class DriversService {
             if (fileList && fileList.length > 0) {
                 const file = fileList[0];
                 documentsToCreate.push({
-                    driverId: driver.user_id,
+                    driverId: driver!.user_id,
                     documentType: type,
                     documentImage: file.buffer,
                     fileName: file.originalname,
@@ -243,7 +243,7 @@ export class DriversService {
 
         return {
             message: 'Driver registered successfully. Awaiting admin verification.',
-            driverId: driver.user_id,
+            driverId: driver!.user_id,
             userId: user.id,
             status: 'pending_approval'
         };
