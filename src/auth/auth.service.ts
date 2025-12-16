@@ -143,7 +143,7 @@ export class AuthService {
         is_verified: user.is_verified,
         is_driver: !!driver || user.roles.includes(UserRole.DRIVER),
         driver_status: driver?.status || null,
-        driver_id: driver?.id || null,
+        driver_id: driver?.user_id || null,
       }
     };
   }

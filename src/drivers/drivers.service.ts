@@ -113,7 +113,7 @@ export class DriversService {
         if (driver) {
             profileImageDoc = await this.driverDocumentRepository.findOne({
                 where: {
-                    driverId: driver.id,
+                    driverId: driver.user_id,
                     documentType: DocumentType.PROFILE_IMAGE
                 },
                 select: ['id']
@@ -128,7 +128,7 @@ export class DriversService {
             phone_number: user.phone_number,
             roles: user.roles,
             is_verified: user.is_verified || false,
-            driver_id: driver?.id || null,
+            driver_id: driver?.user_id || null,
             user_id: user.id,
             driver_status: driver?.status || null,
             message: 'Driver profile retrieved successfully',
@@ -219,7 +219,7 @@ export class DriversService {
             if (fileList && fileList.length > 0) {
                 const file = fileList[0];
                 documentsToCreate.push({
-                    driverId: driver.id,
+                    driverId: driver.user_id,
                     documentType: type,
                     documentImage: file.buffer,
                     fileName: file.originalname,
@@ -243,7 +243,7 @@ export class DriversService {
 
         return {
             message: 'Driver registered successfully. Awaiting admin verification.',
-            driverId: driver.id,
+            driverId: driver.user_id,
             userId: user.id,
             status: 'pending_approval'
         };
@@ -270,11 +270,11 @@ export class DriversService {
     }
 
     async uploadDocument(
-        driverId: number,
+        driverId: string,
         uploadDocumentDto: UploadDocumentDto,
         file: MulterFile
     ) {
-        const driver = await this.driverRepository.findOne({ where: { id: driverId } });
+        const driver = await this.driverRepository.findOne({ where: { user_id: driverId } });
         if (!driver) {
             throw new NotFoundException('Driver not found');
         }
@@ -315,7 +315,7 @@ export class DriversService {
         }
     }
 
-    async getDriverDocuments(driverId: number) {
+    async getDriverDocuments(driverId: string) {
         return this.driverDocumentRepository.find({
             where: { driverId },
             order: { createdAt: 'DESC' },

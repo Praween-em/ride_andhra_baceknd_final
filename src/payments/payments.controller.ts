@@ -26,7 +26,7 @@ export class PaymentsController {
 
         return transactions.map(transaction => ({
             id: transaction.id,
-            type: transaction.transaction_type,
+            type: transaction.type,
             amount: Number(transaction.amount),
             description: transaction.description || 'Transaction',
             date: transaction.created_at.toISOString().split('T')[0],
