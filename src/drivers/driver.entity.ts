@@ -1,6 +1,6 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
   Column,
   CreateDateColumn,
   UpdateDateColumn,
@@ -12,34 +12,66 @@ import { User } from '../users/user.entity';
 import { VehicleType } from '../rides/ride.entity';
 import { DriverDocument } from './driver-document.entity';
 
+export enum DriverStatus {
+  PENDING_APPROVAL = 'pending_approval',
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+  SUSPENDED = 'suspended',
+}
+
 @Entity('driver_profiles')
 export class Driver {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn('uuid')
   user_id: string;
 
   @OneToOne(() => User)
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ name: 'first_name', nullable: true })
+  @Column({ name: 'first_name', type: 'varchar', length: 50, nullable: true })
   firstName: string;
 
-  @Column({ name: 'last_name', nullable: true })
+  @Column({ name: 'last_name', type: 'varchar', length: 50, nullable: true })
   lastName: string;
 
-  @Column({ nullable: true }) // Kept for backward compatibility if needed, but prefer specific fields
-  license_number: string;
+  @Column({ name: 'driver_rating', type: 'decimal', precision: 3, scale: 2, default: 5.00 })
+  driverRating: number;
 
-  @Column({ name: 'vehicle_model', nullable: true })
-  vehicleModel: string;
+  @Column({ name: 'total_rides', type: 'integer', default: 0 })
+  totalRides: number;
 
-  @Column({ name: 'vehicle_color', nullable: true })
-  vehicleColor: string;
+  @Column({ name: 'earnings_total', type: 'decimal', precision: 12, scale: 2, default: 0.00 })
+  earningsTotal: number;
 
-  @Column({ name: 'vehicle_plate_number', unique: true, nullable: true })
-  vehiclePlateNumber: string;
+  @Column({ name: 'is_available', type: 'boolean', default: false })
+  isAvailable: boolean;
+
+  @Column({ name: 'is_online', type: 'boolean', default: false })
+  is_online: boolean;
+
+  @Column({ name: 'current_latitude', type: 'decimal', precision: 10, scale: 6, nullable: true })
+  current_latitude: number;
+
+  @Column({ name: 'current_longitude', type: 'decimal', precision: 10, scale: 6, nullable: true })
+  current_longitude: number;
+
+  @Column({ name: 'current_location', type: 'geography', spatialFeatureType: 'Point', srid: 4326, nullable: true })
+  current_location: string;
+
+  @Column({ name: 'current_address', type: 'text', nullable: true })
+  current_address: string;
 
   @Column({
+    name: 'status',
+    type: 'enum',
+    enum: DriverStatus,
+    enumName: 'driver_status_enum',
+    default: DriverStatus.PENDING_APPROVAL,
+  })
+  status: DriverStatus;
+
+  @Column({
+    name: 'vehicle_type',
     type: 'enum',
     enum: VehicleType,
     enumName: 'vehicle_type_enum',
@@ -47,52 +79,37 @@ export class Driver {
   })
   vehicle_type: VehicleType;
 
-  @Column({ default: false })
-  is_online: boolean; // Kept matching original name for compatibility, or can map to isOnline
+  @Column({ name: 'vehicle_model', type: 'varchar', length: 100, nullable: true })
+  vehicleModel: string;
 
-  @Column({ default: false, name: 'is_available' })
-  isAvailable: boolean;
+  @Column({ name: 'vehicle_color', type: 'varchar', length: 30, nullable: true })
+  vehicleColor: string;
 
-  @Column({ type: 'timestamp with time zone', nullable: true })
-  last_seen_at: Date;
-
-  @Column('decimal', { precision: 10, scale: 6, nullable: true })
-  current_latitude: number;
-
-  @Column('decimal', { precision: 10, scale: 6, nullable: true })
-  current_longitude: number;
-
-  @Column({ type: 'geography', spatialFeatureType: 'Point', srid: 4326, nullable: true })
-  current_location: string;
-
-  @OneToMany(() => DriverDocument, (document) => document.driver)
-  documents: DriverDocument[];
-
-  @Column({ name: 'driver_rating', type: 'decimal', precision: 3, scale: 2, default: 5.00 })
-  driverRating: number;
-
-  @Column({ name: 'total_rides', default: 0 })
-  totalRides: number;
-
-  @Column({ name: 'earnings_total', type: 'decimal', precision: 12, scale: 2, default: 0.00 })
-  earningsTotal: number;
-
-  @Column({ name: 'status', default: 'pending_approval' })
-  status: string;
+  @Column({ name: 'vehicle_plate_number', type: 'varchar', length: 50, unique: true, nullable: true })
+  vehiclePlateNumber: string;
 
   @Column({ name: 'approved_at', type: 'timestamptz', nullable: true })
   approvedAt: Date;
 
-  @Column({ name: 'approved_by', nullable: true })
+  @Column({ name: 'approved_by', type: 'uuid', nullable: true })
   approvedBy: string;
 
-  @CreateDateColumn()
+  @Column({ name: 'document_submission_status', type: 'varchar', length: 30, default: 'pending' })
+  document_submission_status: string;
+
+  @Column({ name: 'background_check_passed', type: 'boolean', default: false })
+  background_check_passed: boolean;
+
+  @OneToMany(() => DriverDocument, (document) => document.driver)
+  documents: DriverDocument[];
+
+  @CreateDateColumn({ name: 'created_at' })
   created_at: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updated_at: Date;
 
-  // Getters for compatibility if needed
+  // Getters for compatibility
   get isOnline(): boolean {
     return this.is_online;
   }
