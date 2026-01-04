@@ -104,14 +104,18 @@ export class AuthService {
   }
 
   async loginVerified(phoneNumber: string): Promise<any> {
+    this.logger.log(`DEBUG: loginVerified called for: ${phoneNumber}`, 'AuthService');
     const existingUser = await this.usersService.findOneByPhoneNumber(phoneNumber);
+    this.logger.log(`DEBUG: lookup result for ${phoneNumber}: ${existingUser ? 'FOUND' : 'NOT FOUND'}`, 'AuthService');
 
     let user: User;
     let isNewUser: boolean = false;
 
     if (existingUser) {
+      this.logger.log(`DEBUG: Existing user found: ID=${existingUser.id}, Name="${existingUser.name}"`, 'AuthService');
       user = existingUser;
     } else {
+      this.logger.log(`DEBUG: User not found, creating new user for ${phoneNumber}`, 'AuthService');
       user = await this.usersService.create({
         phone_number: phoneNumber,
         name: '',

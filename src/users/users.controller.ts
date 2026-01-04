@@ -14,6 +14,13 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('me')
+  async getMe(@Request() req) {
+    const userId = req.user.id;
+    return this.usersService.findOneById(userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('rating')
   async getRating(@Request() req) {
     const userId = req.user.id;

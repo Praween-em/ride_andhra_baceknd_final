@@ -19,6 +19,12 @@ export class UsersService {
     });
   }
 
+  async findOneById(id: string): Promise<User | null> {
+    return this.usersRepository.findOne({
+      where: { id },
+    });
+  }
+
   async create(userData: Partial<User>): Promise<User> {
     const user = this.usersRepository.create(userData);
     const savedUser = await this.usersRepository.save(user);

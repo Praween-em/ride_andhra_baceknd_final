@@ -12,7 +12,7 @@ import { Logger } from '@nestjs/common';
   cors: {
     origin: process.env.ALLOWED_ORIGINS
       ? process.env.ALLOWED_ORIGINS.split(',')
-      : ['http://localhost:3000', 'http://localhost:19006', 'http://localhost:8081'],
+      : ['http://localhost:3000', 'http://localhost:19006', 'http://localhost:8082'],
     credentials: true,
   },
 })

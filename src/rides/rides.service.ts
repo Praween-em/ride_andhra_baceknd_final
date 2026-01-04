@@ -121,17 +121,28 @@ export class RidesService {
   async createRide(
     createRideDto: CreateRideDto & { rider_id: string },
   ): Promise<Ride> {
+    console.log('--- [CreateRide] Start ---');
+    console.log('Incoming DTO:', JSON.stringify(createRideDto, null, 2));
+
     // Normalize vehicle_type: lowercase and replace hyphens with underscores
-    // e.g., 'Bike-lite' -> 'bike_lite' to match database enum
-    const normalizedVehicleType = createRideDto.vehicle_type
+    const vehicleTypeStr = createRideDto.vehicle_type || createRideDto.vehicleType;
+    const normalizedVehicleType = vehicleTypeStr
       ?.toLowerCase()
       .replace(/-/g, '_') as VehicleType;
 
-    const distanceInKm = (createRideDto.distance || 0) / 1000;
-    const durationInMinutes = (createRideDto.duration || 0) / 60;
+    const distanceRaw = createRideDto.distance || 0;
+    const durationRaw = createRideDto.duration || 0;
+    const distanceInKm = distanceRaw / 1000;
+    const durationInMinutes = Math.ceil(durationRaw / 60);
 
     const rideToCreate: Partial<Ride> = {
-      ...createRideDto,
+      rider_id: createRideDto.rider_id,
+      pickup_latitude: createRideDto.pickup_latitude || createRideDto.pickupLatitude,
+      pickup_longitude: createRideDto.pickup_longitude || createRideDto.pickupLongitude,
+      pickup_address: createRideDto.pickup_address || createRideDto.pickupLocation,
+      dropoff_latitude: createRideDto.dropoff_latitude || createRideDto.dropoffLatitude,
+      dropoff_longitude: createRideDto.dropoff_longitude || createRideDto.dropoffLongitude,
+      dropoff_address: createRideDto.dropoff_address || createRideDto.dropoffLocation,
       vehicle_type: normalizedVehicleType,
       estimated_distance_km: distanceInKm,
       estimated_duration_min: durationInMinutes,
@@ -139,14 +150,24 @@ export class RidesService {
       status: RideStatus.PENDING,
     };
 
-    const ride = this.ridesRepository.create(rideToCreate);
-    const newRide = await this.ridesRepository.save(ride);
-    this.notificationsService.sendRideUpdate(
-      newRide.id,
-      RideStatus.PENDING,
-      newRide,
-    );
-    return newRide;
+    console.log('Mapped Ride for creation:', JSON.stringify(rideToCreate, null, 2));
+
+    try {
+      const ride = this.ridesRepository.create(rideToCreate);
+      const newRide = await this.ridesRepository.save(ride);
+      console.log('--- [CreateRide] Success ---', newRide.id);
+
+      this.notificationsService.sendRideUpdate(
+        newRide.id,
+        RideStatus.PENDING,
+        newRide,
+      );
+      return newRide;
+    } catch (error) {
+      console.error('--- [CreateRide] ERROR ---');
+      console.error(error);
+      throw error;
+    }
   }
 
   async updateRideStatus(

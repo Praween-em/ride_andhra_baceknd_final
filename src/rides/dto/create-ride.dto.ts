@@ -1,43 +1,71 @@
-import { IsNumber, IsString, IsNotEmpty } from 'class-validator';
+import { IsNumber, IsString, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class CreateRideDto {
   @IsNumber()
-  @IsNotEmpty()
-  pickup_latitude: number;
+  @IsOptional()
+  pickup_latitude?: number;
 
   @IsNumber()
-  @IsNotEmpty()
-  pickup_longitude: number;
+  @IsOptional()
+  pickupLatitude?: number;
+
+  @IsNumber()
+  @IsOptional()
+  pickup_longitude?: number;
+
+  @IsNumber()
+  @IsOptional()
+  pickupLongitude?: number;
 
   @IsString()
-  @IsNotEmpty()
-  pickup_address: string;
-
-  @IsNumber()
-  @IsNotEmpty()
-  dropoff_latitude: number;
-
-  @IsNumber()
-  @IsNotEmpty()
-  dropoff_longitude: number;
+  @IsOptional()
+  pickup_address?: string;
 
   @IsString()
-  @IsNotEmpty()
-  dropoff_address: string;
+  @IsOptional()
+  pickupLocation?: string;
 
   @IsNumber()
-  @IsNotEmpty()
-  fare: number;
+  @IsOptional()
+  dropoff_latitude?: number;
 
   @IsNumber()
-  @IsNotEmpty()
-  distance: number;
+  @IsOptional()
+  dropoffLatitude?: number;
 
   @IsNumber()
-  @IsNotEmpty()
-  duration: number;
+  @IsOptional()
+  dropoff_longitude?: number;
+
+  @IsNumber()
+  @IsOptional()
+  dropoffLongitude?: number;
 
   @IsString()
-  @IsNotEmpty()
-  vehicle_type: string;
+  @IsOptional()
+  dropoff_address?: string;
+
+  @IsString()
+  @IsOptional()
+  dropoffLocation?: string;
+
+  @IsNumber()
+  @IsOptional()
+  fare?: number;
+
+  @IsNumber()
+  @IsOptional()
+  distance?: number;
+
+  @IsNumber()
+  @IsOptional()
+  duration?: number;
+
+  @IsString()
+  @IsOptional()
+  vehicle_type?: string;
+
+  @IsString()
+  @IsOptional()
+  vehicleType?: string;
 }
