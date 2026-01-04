@@ -17,12 +17,15 @@ export class RidesService {
   ) { }
 
   async calculateFare(
-    distance: number,
-    duration: number,
+    distanceMeters: number,
+    durationSeconds: number,
     vehicleType: VehicleType,
   ): Promise<{ fare: number }> {
-    const distanceInKm = distance / 1000;
-    const durationInMinutes = duration / 60;
+    const distanceInKm = distanceMeters / 1000;
+    const durationInMinutes = durationSeconds / 60;
+
+    console.log(`[CalculateFare] Start: ${vehicleType}, RawDist: ${distanceMeters}m, RawDur: ${durationSeconds}s`);
+    console.log(`[CalculateFare] Converted: Dist: ${distanceInKm.toFixed(3)}km, Dur: ${durationInMinutes.toFixed(2)}min`);
 
     const fareSetting = await this.fareSettingsRepository.findOne({
       where: { vehicle_type: vehicleType, is_active: true },
@@ -34,6 +37,7 @@ export class RidesService {
         `Fare settings for vehicle type ${vehicleType} not found.`,
       );
     }
+    console.log(`[CalculateFare] Found settings:`, fareSetting);
 
     // Defensively parse all values to numbers to avoid NaN issues
     const baseFare = parseFloat(fareSetting.base_fare as any);
@@ -45,10 +49,12 @@ export class RidesService {
     let distanceCost = 0;
     let remainingDistance = distanceInKm;
 
+    console.log(`[CalculateFare] Checking tiers for vehicle type: ${vehicleType}`);
     if (fareSetting.tiers && fareSetting.tiers.length > 0) {
       const sortedTiers = fareSetting.tiers.sort(
         (a, b) => parseFloat(a.km_from as any) - parseFloat(b.km_from as any),
       );
+      console.log(`[CalculateFare] Found ${sortedTiers.length} tiers`);
 
       for (const tier of sortedTiers) {
         if (remainingDistance <= 0) break;
@@ -94,6 +100,7 @@ export class RidesService {
       throw new Error('Fare calculation failed and resulted in a non-numeric value.');
     }
 
+    console.log(`[CalculateFare] Final Fare: ${finalFare.toFixed(2)}`);
     return { fare: parseFloat(finalFare.toFixed(2)) };
   }
 
@@ -120,11 +127,14 @@ export class RidesService {
       ?.toLowerCase()
       .replace(/-/g, '_') as VehicleType;
 
+    const distanceInKm = (createRideDto.distance || 0) / 1000;
+    const durationInMinutes = (createRideDto.duration || 0) / 60;
+
     const rideToCreate: Partial<Ride> = {
       ...createRideDto,
       vehicle_type: normalizedVehicleType,
-      estimated_distance_km: createRideDto.distance,
-      estimated_duration_min: createRideDto.duration,
+      estimated_distance_km: distanceInKm,
+      estimated_duration_min: durationInMinutes,
       estimated_fare: createRideDto.fare,
       status: RideStatus.PENDING,
     };
